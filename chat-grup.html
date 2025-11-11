@@ -227,8 +227,15 @@
             flex: 1;
             padding: 20px;
             overflow-y: auto;
-            background: linear-gradient(to bottom, #f5f7fa, #e4e8f0);
-            background-attachment: fixed;
+            background: url('https://b.top4top.io/p_36027h9sg0.jpg') no-repeat center center fixed;
+            background-size: cover;
+        }
+
+        .chat-messages.deletion-mode .message.received,
+        .chat-messages.deletion-mode .message.ai-message {
+            cursor: pointer;
+            background-color: rgba(255, 0, 0, 0.1) !important;
+            border: 1px dashed #ff6b6b;
         }
 
         .message {
@@ -257,6 +264,22 @@
             background-color: white;
             border-bottom-left-radius: 5px;
             color: #333;
+        }
+
+        /* AI message styles */
+        .message.ai-message {
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+            color: white;
+            margin: 15px auto;
+            max-width: 70%;
+            border-radius: 18px;
+            border-bottom-left-radius: 5px;
+            text-align: left;
+        }
+
+        .message.ai-message .sender {
+            color: #e8f5e9;
+            font-weight: bold;
         }
 
         .message .sender {
@@ -460,6 +483,23 @@
             box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
         }
 
+        .ai-button {
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-right: 10px;
+        }
+
+        .ai-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+        }
+
         /* Upload Status */
         .upload-status {
             padding: 10px;
@@ -651,16 +691,19 @@
                     <div class="online-count" id="onlineCount">0 Online</div>
                 </div>
                 <div class="header-buttons">
+                    <button class="ai-button" id="aiButton" style="display: none;">Chat AI</button>
                     <button class="tools-button" id="toolsButton">Tools</button>
                     <button class="logout-button" id="logoutButton">Logout</button>
                 </div>
             </div>
 
             <div class="tools-menu" id="toolsMenu">
-                <button id="deleteOthersBtn">Hapus Pesan lain</button>
+                <button id="deleteAllMessagesBtn">Hapus Semua Pesan</button>
+                <button id="enableDeletionModeBtn">Hapus Pesan Orang Lain</button>
                 <button id="banUserBtn">Ban User</button>
                 <button id="warnUserBtn">Kirim Peringatan</button>
                 <button id="makeAdminBtn">Jadikan Admin</button>
+                <button id="removeAdminBtn">Hentikan Admin</button>
                 <button id="toggleGroupBtn">Tutup Grup</button>
             </div>
 
@@ -677,22 +720,11 @@
         </div>
     </div>
 
-    <div class="modal" id="deleteMessageModal">
-        <div class="modal-content">
-            <h2>Hapus Pesan</h2>
-            <p>Pilih pesan yang ingin dihapus:</p>
-            <div id="messageList"></div>
-            <div class="modal-buttons">
-                <button class="cancel" id="cancelDelete">Batal</button>
-                <button class="confirm" id="confirmDelete">Hapus</button>
-            </div>
-        </div>
-    </div>
-
     <div class="modal" id="banUserModal">
         <div class="modal-content">
             <h2>Banned User</h2>
             <input type="text" id="userToBan" placeholder="Nama user yang akan dibanned">
+            <input type="text" id="banReason" placeholder="Alasan banned">
             <input type="number" id="banDuration" placeholder="Durasi banned (menit)" value="60">
             <div class="modal-buttons">
                 <button class="cancel" id="cancelBan">Batal</button>
@@ -716,10 +748,32 @@
     <div class="modal" id="makeAdminModal">
         <div class="modal-content">
             <h2>Jadikan Admin</h2>
-            <input type="text" id="userToAdmin" placeholder=Masukan Username">
+            <input type="text" id="userToAdmin" placeholder="Masukan Username">
             <div class="modal-buttons">
                 <button class="cancel" id="cancelAdmin">Batal</button>
                 <button class="confirm" id="confirmAdmin">Jadikan Admin</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="removeAdminModal">
+        <div class="modal-content">
+            <h2>Hentikan Admin</h2>
+            <input type="text" id="userToRemoveAdmin" placeholder="Masukan Username">
+            <div class="modal-buttons">
+                <button class="cancel" id="cancelRemoveAdmin">Batal</button>
+                <button class="confirm" id="confirmRemoveAdmin">Hentikan Admin</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="deleteAllMessagesModal">
+        <div class="modal-content">
+            <h2>Hapus Semua Pesan</h2>
+            <p>Apakah Anda yakin ingin menghapus semua pesan? Tindakan ini tidak dapat dibatalkan.</p>
+            <div class="modal-buttons">
+                <button class="cancel" id="cancelDeleteAll">Batal</button>
+                <button class="confirm" id="confirmDeleteAll">Hapus Semua</button>
             </div>
         </div>
     </div>
@@ -749,6 +803,11 @@
         const groupStatusRef = database.ref('groupStatus');
         const userDevicesRef = database.ref('userDevices');
 
+        // AI
+        const AI_API_KEY = "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";
+        const AI_API_URL = "https://openrouter.ai/api/v1/chat/completions";
+        const AI_NAME = "Rem Ai";
+
         // Variabel global
         let currentUser = null;
         let isTaherUser = false;
@@ -757,6 +816,7 @@
         let onlineUsers = {};
         let admins = {};
         let groupClosed = false;
+        let deletionModeActive = false;
 
         // Kata terlarang
         const forbiddenWords = ['Tuti', 'Udin', 'Haer', 'Tut', 'Adam'];
@@ -772,10 +832,12 @@
 
         // Tools func
         document.getElementById('toolsButton').addEventListener('click', toggleToolsMenu);
-        document.getElementById('deleteOthersBtn').addEventListener('click', showDeleteMessageModal);
+        document.getElementById('deleteAllMessagesBtn').addEventListener('click', showDeleteAllMessagesModal);
+        document.getElementById('enableDeletionModeBtn').addEventListener('click', toggleDeletionMode);
         document.getElementById('banUserBtn').addEventListener('click', showBanUserModal);
         document.getElementById('warnUserBtn').addEventListener('click', showWarnUserModal);
         document.getElementById('makeAdminBtn').addEventListener('click', showMakeAdminModal);
+        document.getElementById('removeAdminBtn').addEventListener('click', showRemoveAdminModal);
         document.getElementById('toggleGroupBtn').addEventListener('click', toggleGroupStatus);
 
         // File upload functionality
@@ -787,15 +849,24 @@
         // Quick login functionality
         document.getElementById('quickLoginButton').addEventListener('click', quickLogin);
 
+        // AI Button functionality
+        document.getElementById('aiButton').addEventListener('click', function() {
+            const messageInput = document.getElementById('messageInput');
+            messageInput.value = '.ai Halo';
+            messageInput.focus();
+        });
+
         // Modal buttons
-        document.getElementById('cancelDelete').addEventListener('click', () => document.getElementById('deleteMessageModal').style.display = 'none');
-        document.getElementById('confirmDelete').addEventListener('click', deleteSelectedMessage);
         document.getElementById('cancelBan').addEventListener('click', () => document.getElementById('banUserModal').style.display = 'none');
         document.getElementById('confirmBan').addEventListener('click', banUser);
         document.getElementById('cancelWarn').addEventListener('click', () => document.getElementById('warnUserModal').style.display = 'none');
         document.getElementById('confirmWarn').addEventListener('click', warnUser);
         document.getElementById('cancelAdmin').addEventListener('click', () => document.getElementById('makeAdminModal').style.display = 'none');
         document.getElementById('confirmAdmin').addEventListener('click', makeAdmin);
+        document.getElementById('cancelRemoveAdmin').addEventListener('click', () => document.getElementById('removeAdminModal').style.display = 'none');
+        document.getElementById('confirmRemoveAdmin').addEventListener('click', removeAdmin);
+        document.getElementById('cancelDeleteAll').addEventListener('click', () => document.getElementById('deleteAllMessagesModal').style.display = 'none');
+        document.getElementById('confirmDeleteAll').addEventListener('click', deleteAllMessages);
 
         // Fungsi untuk toggle menu tools
         function toggleToolsMenu() {
@@ -920,8 +991,10 @@
                     // Tampilkan atau sembunyikan tombol tools berdasarkan user
                     if (isAdmin) {
                         document.getElementById('toolsButton').style.display = 'block';
+                        document.getElementById('aiButton').style.display = 'none';
                     } else {
                         document.getElementById('toolsButton').style.display = 'none';
+                        document.getElementById('aiButton').style.display = 'block';
                     }
                     
                     // Load pesan
@@ -995,12 +1068,112 @@
             location.reload();
         }
 
-        // Fungsi kirim pesan
+        // Fungsi untuk memanggil AI
+        async function callAI(userMessage) {
+            try {
+                // Tampilkan status sedang memproses
+                const thinkingMessage = {
+                    text: `${AI_NAME} sedang mengetik...`,
+                    sender: 'System',
+                    timestamp: Date.now(),
+                    id: generateMessageId(),
+                    type: 'text'
+                };
+                messagesRef.push(thinkingMessage);
+
+                const response = await fetch(AI_API_URL, {
+                    method: "POST",
+                    headers: {
+                        "Authorization": `Bearer ${AI_API_KEY}`,
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        "preset": "@preset/taher",
+                        "model": "meta-llama/llama-3.2-3b-instruct",
+                        "messages": [
+                            {
+                                "role": "user",
+                                "content": userMessage
+                            }
+                        ]
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (data.error) {
+                    throw new Error(data.error.message);
+                }
+
+                const aiResponse = data.choices[0].message.content;
+
+                // Hapus pesan "sedang mengetik" dengan mencari dan menghapus pesan system yang terakhir
+                messagesRef.once('value', snapshot => {
+                    const messages = snapshot.val();
+                    if (messages) {
+                        Object.keys(messages).forEach(key => {
+                            if (messages[key].text === `${AI_NAME} sedang mengetik...`) {
+                                messagesRef.child(key).remove();
+                            }
+                        });
+                    }
+                });
+
+                // Kirim respon AI
+                const aiMessage = {
+                    text: aiResponse,
+                    sender: AI_NAME,
+                    timestamp: Date.now(),
+                    id: generateMessageId(),
+                    type: 'text',
+                    isAdmin: false
+                };
+
+                messagesRef.push(aiMessage);
+
+            } catch (error) {
+                console.error('Error calling AI:', error);
+                
+                // Hapus pesan "sedang mengetik"
+                messagesRef.once('value', snapshot => {
+                    const messages = snapshot.val();
+                    if (messages) {
+                        Object.keys(messages).forEach(key => {
+                            if (messages[key].text === `${AI_NAME} sedang mengetik...`) {
+                                messagesRef.child(key).remove();
+                            }
+                        });
+                    }
+                });
+
+                // Kirim pesan error
+                const errorMessage = {
+                    text: `Maaf, terjadi error saat memanggil ${AI_NAME}: ${error.message}`,
+                    sender: 'System',
+                    timestamp: Date.now(),
+                    id: generateMessageId(),
+                    type: 'text'
+                };
+                messagesRef.push(errorMessage);
+            }
+        }
+
+        // Fungsi kirim pesan - DIPERBAIKI: Menambahkan command AI
         function sendMessage() {
             const messageInput = document.getElementById('messageInput');
             const messageText = messageInput.value.trim();
             
             if (!messageText) return;
+            
+            // Cek apakah pesan adalah command AI
+            if (messageText.startsWith('/ai ') || messageText.startsWith('.ai ')) {
+                const aiQuery = messageText.substring(4).trim(); // Hilangkan "/ai " atau ".ai "
+                if (aiQuery) {
+                    callAI(aiQuery);
+                    messageInput.value = '';
+                    return;
+                }
+            }
             
             // Cek kata terlarang
             if (containsForbiddenWords(messageText) && !isAdmin) {
@@ -1154,12 +1327,18 @@
             });
         }
 
-        // Fungsi tampilkan pesan
+        // Fungsi tampilkan pesan - DIPERBAIKI: Menambahkan style untuk pesan AI
         function displayMessage(message) {
             const chatMessages = document.getElementById('chatMessages');
             const messageDiv = document.createElement('div');
             
-            messageDiv.className = `message ${message.sender === currentUser ? 'sent' : 'received'}`;
+            // Tentukan class untuk pesan AI
+            if (message.sender === AI_NAME) {
+                messageDiv.className = 'message ai-message';
+            } else {
+                messageDiv.className = `message ${message.sender === currentUser ? 'sent' : 'received'}`;
+            }
+            
             if (message.deleted) {
                 messageDiv.classList.add('deleted');
             }
@@ -1256,6 +1435,87 @@
             });
         }
 
+        // Fungsi untuk toggle mode penghapusan pesan orang lain
+        function toggleDeletionMode() {
+            const chatMessages = document.getElementById('chatMessages');
+            
+            if (deletionModeActive) {
+                // Nonaktifkan mode penghapusan
+                chatMessages.classList.remove('deletion-mode');
+                deletionModeActive = false;
+                alert('Mode penghapusan pesan orang lain dinonaktifkan');
+            } else {
+                // Aktifkan mode penghapusan
+                chatMessages.classList.add('deletion-mode');
+                deletionModeActive = true;
+                alert('Mode penghapusan pesan orang lain diaktifkan. Klik pesan orang lain untuk menghapus.');
+            }
+            
+            // Sembunyikan menu tools
+            document.getElementById('toolsMenu').style.display = 'none';
+        }
+
+        // Fungsi untuk menghapus pesan orang lain dengan klik
+        function deleteOtherMessage(messageId) {
+            if (!isAdmin) {
+                alert('Hanya admin yang dapat menghapus pesan orang lain');
+                return;
+            }
+            
+            // Cari pesan dengan ID tersebut
+            messagesRef.once('value', snapshot => {
+                const messages = snapshot.val();
+                
+                Object.keys(messages).forEach(key => {
+                    if (messages[key].id === messageId) {
+                        // Hapus langsung dari database
+                        messagesRef.child(key).remove()
+                            .then(() => {
+                                console.log('Pesan berhasil dihapus dari database');
+                            })
+                            .catch(error => {
+                                console.error('Error menghapus pesan:', error);
+                            });
+                    }
+                });
+            });
+        }
+
+        // Fungsi untuk modal hapus semua pesan
+        function showDeleteAllMessagesModal() {
+            document.getElementById('deleteAllMessagesModal').style.display = 'flex';
+        }
+
+        // Fungsi untuk menghapus semua pesan
+        function deleteAllMessages() {
+            // Hapus semua pesan dari Firebase
+            messagesRef.remove()
+                .then(() => {
+                    console.log('Semua pesan berhasil dihapus dari database');
+                    
+                    // Kirim pesan sistem
+                    const systemMessage = {
+                        text: `Semua pesan telah dihapus oleh ${currentUser}.`,
+                        sender: 'System',
+                        timestamp: Date.now(),
+                        id: generateMessageId(),
+                        type: 'text'
+                    };
+                    
+                    messagesRef.push(systemMessage);
+                    
+                    // Tutup modal
+                    document.getElementById('deleteAllMessagesModal').style.display = 'none';
+                    
+                    // Sembunyikan menu tools
+                    document.getElementById('toolsMenu').style.display = 'none';
+                })
+                .catch(error => {
+                    console.error('Error menghapus semua pesan:', error);
+                    alert('Gagal menghapus semua pesan');
+                });
+        }
+
         // Fungsi cek kata terlarang
         function containsForbiddenWords(text) {
             const lowerText = text.toLowerCase();
@@ -1302,66 +1562,6 @@
             });
         }
 
-        // Fungsi untuk modal hapus pesan orang lain
-        function showDeleteMessageModal() {
-            const modal = document.getElementById('deleteMessageModal');
-            const messageList = document.getElementById('messageList');
-            messageList.innerHTML = '';
-            
-            // Ambil semua pesan
-            messagesRef.once('value', snapshot => {
-                const messages = snapshot.val();
-                
-                if (!messages) return;
-                
-                Object.values(messages).forEach(message => {
-                    if (!message.deleted && message.sender !== currentUser) {
-                        const messageDiv = document.createElement('div');
-                        messageDiv.className = 'message-item';
-                        messageDiv.innerHTML = `
-                            <input type="radio" name="selectedMessage" value="${message.id}">
-                            <span><strong>${message.sender}:</strong> ${message.type === 'file' ? '📎 ' + message.fileName : message.text}</span>
-                        `;
-                        messageList.appendChild(messageDiv);
-                    }
-                });
-            });
-            
-            modal.style.display = 'flex';
-        }
-
-        // Fungsi hapus pesan yang dipilih - DIPERBAIKI: Hapus langsung dari database
-        function deleteSelectedMessage() {
-            const selectedMessage = document.querySelector('input[name="selectedMessage"]:checked');
-            
-            if (!selectedMessage) {
-                alert('Pilih pesan yang akan dihapus!');
-                return;
-            }
-            
-            const messageId = selectedMessage.value;
-            
-            // Cari dan hapus pesan
-            messagesRef.once('value', snapshot => {
-                const messages = snapshot.val();
-                
-                Object.keys(messages).forEach(key => {
-                    if (messages[key].id === messageId) {
-                        // Hapus langsung dari database
-                        messagesRef.child(key).remove()
-                            .then(() => {
-                                console.log('Pesan berhasil dihapus dari database');
-                            })
-                            .catch(error => {
-                                console.error('Error menghapus pesan:', error);
-                            });
-                    }
-                });
-            });
-            
-            document.getElementById('deleteMessageModal').style.display = 'none';
-        }
-
         // Fungsi untuk modal banned user
         function showBanUserModal() {
             document.getElementById('banUserModal').style.display = 'flex';
@@ -1370,6 +1570,7 @@
         // Fungsi banned user
         function banUser() {
             const username = document.getElementById('userToBan').value.trim();
+            const reason = document.getElementById('banReason').value.trim() || 'Tanpa alasan';
             const duration = parseInt(document.getElementById('banDuration').value) || 60;
             
             if (!username) {
@@ -1377,10 +1578,16 @@
                 return;
             }
             
+            // Cek apakah mencoba memblokir Taher
+            if (username.toLowerCase().includes('taher')) {
+                alert('Tidak Bisa Blokir Taher Karena Dia Pembuat nya');
+                return;
+            }
+            
             const banData = {
                 username: username,
                 bannedBy: currentUser,
-                reason: 'Tanpa alasan',
+                reason: reason,
                 timestamp: Date.now(),
                 unbannedAt: Date.now() + (duration * 60 * 1000) // Durasi dalam menit
             };
@@ -1389,7 +1596,7 @@
             
             // Kirim pesan sistem
             const systemMessage = {
-                text: `User ${username} telah dibanned oleh ${currentUser} selama ${duration} menit.`,
+                text: `User ${username} telah dibanned oleh ${currentUser} selama ${duration} menit. Alasan: ${reason}`,
                 sender: 'System',
                 timestamp: Date.now(),
                 id: generateMessageId(),
@@ -1400,6 +1607,7 @@
             
             document.getElementById('banUserModal').style.display = 'none';
             document.getElementById('userToBan').value = '';
+            document.getElementById('banReason').value = '';
             document.getElementById('banDuration').value = '60';
         }
 
@@ -1466,6 +1674,44 @@
             document.getElementById('userToAdmin').value = '';
         }
 
+        // Fungsi untuk modal hentikan admin
+        function showRemoveAdminModal() {
+            document.getElementById('removeAdminModal').style.display = 'flex';
+        }
+
+        // Fungsi hentikan admin
+        function removeAdmin() {
+            const username = document.getElementById('userToRemoveAdmin').value.trim();
+            
+            if (!username) {
+                alert('Masukkan nama user!');
+                return;
+            }
+            
+            // Cek apakah mencoba menghapus admin Taher
+            if (username.toLowerCase().includes('taher')) {
+                alert('Tidak Bisa Hentikan Admin Taher Karena Dia Pembuat nya');
+                return;
+            }
+            
+            // Hapus user dari admin
+            adminsRef.child(username).remove();
+            
+            // Kirim pesan sistem
+            const systemMessage = {
+                text: `User ${username} tidak lagi menjadi admin.`,
+                sender: 'System',
+                timestamp: Date.now(),
+                id: generateMessageId(),
+                type: 'text'
+            };
+            
+            messagesRef.push(systemMessage);
+            
+            document.getElementById('removeAdminModal').style.display = 'none';
+            document.getElementById('userToRemoveAdmin').value = '';
+        }
+
         // Fungsi untuk toggle status grup (buka/tutup)
         function toggleGroupStatus() {
             const newStatus = !groupClosed;
@@ -1484,6 +1730,9 @@
             
             // Update tombol tools
             document.getElementById('toggleGroupBtn').textContent = newStatus ? 'Buka Grup' : 'Tutup Grup';
+            
+            // Sembunyikan menu tools
+            document.getElementById('toolsMenu').style.display = 'none';
         }
 
         // Fungsi untuk update status grup
@@ -1549,6 +1798,19 @@
                 document.getElementById('quickLoginButton').style.display = 'block';
                 document.getElementById('lastUsername').textContent = lastUsername;
             }
+
+            // Setup event listener untuk menghapus pesan orang lain dengan klik
+            document.getElementById('chatMessages').addEventListener('click', function(e) {
+                if (!deletionModeActive) return;
+                
+                const messageElement = e.target.closest('.message.received, .message.ai-message');
+                if (messageElement) {
+                    const messageId = messageElement.dataset.id;
+                    if (confirm('Hapus pesan ini?')) {
+                        deleteOtherMessage(messageId);
+                    }
+                }
+            });
 
             // Setup beforeunload event untuk menandai user offline saat keluar
             window.addEventListener('beforeunload', () => {
