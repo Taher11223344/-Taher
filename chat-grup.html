@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Grup Chat Online</title>
+    <title>Grup Chat online tanpa batasan</title>
     <style>
         * {
             margin: 0;
@@ -626,6 +626,93 @@
             font-size: 14px;
         }
 
+        /* Device Users List Styles */
+        .device-user-item {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+            transition: all 0.3s ease;
+        }
+
+        .device-user-item:hover {
+            background: #e9ecef;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        .device-user-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .device-username {
+            font-weight: bold;
+            color: #333;
+            font-size: 16px;
+        }
+
+        .device-timestamp {
+            font-size: 12px;
+            color: #666;
+        }
+
+        .device-details {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            font-size: 13px;
+        }
+
+        .device-detail-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .device-detail-label {
+            font-weight: 600;
+            color: #495057;
+            font-size: 12px;
+        }
+
+        .device-detail-value {
+            color: #333;
+            word-break: break-word;
+        }
+
+        .device-actions {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 10px;
+            gap: 8px;
+        }
+
+        .delete-device-btn {
+            background: #ff6b6b;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s ease;
+        }
+
+        .delete-device-btn:hover {
+            background: #ff5252;
+            transform: translateY(-1px);
+        }
+
+        .no-devices {
+            text-align: center;
+            color: #666;
+            font-style: italic;
+            padding: 20px;
+        }
+
         /* Scrollbar styling */
         .chat-messages::-webkit-scrollbar {
             width: 6px;
@@ -705,6 +792,7 @@
                 <button id="makeAdminBtn">Jadikan Admin</button>
                 <button id="removeAdminBtn">Hentikan Admin</button>
                 <button id="toggleGroupBtn">Tutup Grup</button>
+                <button id="checkDevicesBtn">Cek Device Users</button>
             </div>
 
             <div class="chat-messages" id="chatMessages">
@@ -778,6 +866,24 @@
         </div>
     </div>
 
+    <div class="modal" id="deviceUsersModal">
+        <div class="modal-content" style="max-width: 800px; max-height: 80vh;">
+            <h2>Device Users Information</h2>
+            <div style="margin-bottom: 15px; font-size: 14px; color: #666;">
+                Total: <span id="totalDeviceUsers">0</span> devices
+            </div>
+            <div style="max-height: 400px; overflow-y: auto; border: 1px solid #e9ecef; border-radius: 8px; padding: 10px;">
+                <div id="deviceUsersList">
+                    <!-- Daftar device users akan ditampilkan di sini -->
+                </div>
+            </div>
+            <div class="modal-buttons">
+                <button class="cancel" id="closeDeviceUsersModal">Tutup</button>
+                <button class="confirm" style="background: #ff6b6b;" id="deleteAllDevicesBtn">Hapus Semua Data</button>
+            </div>
+        </div>
+    </div>
+
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
     <script>
@@ -794,7 +900,7 @@
 
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
-        // DB
+        // fungsi untuk Chat
         const messagesRef = database.ref('messages');
         const usersRef = database.ref('users');
         const bannedUsersRef = database.ref('bannedUsers');
@@ -803,12 +909,10 @@
         const groupStatusRef = database.ref('groupStatus');
         const userDevicesRef = database.ref('userDevices');
 
-        // AI
         const AI_API_KEY = "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";
         const AI_API_URL = "https://openrouter.ai/api/v1/chat/completions";
         const AI_NAME = "Rem Ai";
 
-        // Variabel global
         let currentUser = null;
         let isTaherUser = false;
         let isAdmin = false;
@@ -818,7 +922,6 @@
         let groupClosed = false;
         let deletionModeActive = false;
 
-        // Kata terlarang
         const forbiddenWords = ['Tuti', 'Udin', 'Haer', 'Tut', 'Adam'];
         const forbiddenEmojis = ['✅', '✓', '✔️', '☑️'];
 
@@ -839,6 +942,7 @@
         document.getElementById('makeAdminBtn').addEventListener('click', showMakeAdminModal);
         document.getElementById('removeAdminBtn').addEventListener('click', showRemoveAdminModal);
         document.getElementById('toggleGroupBtn').addEventListener('click', toggleGroupStatus);
+        document.getElementById('checkDevicesBtn').addEventListener('click', showDeviceUsersModal);
 
         // File upload functionality
         document.getElementById('fileUploadButton').addEventListener('click', () => {
@@ -846,17 +950,17 @@
         });
         document.getElementById('fileInput').addEventListener('change', handleFileUpload);
 
-        // Quick login functionality
         document.getElementById('quickLoginButton').addEventListener('click', quickLogin);
 
-        // AI Button functionality
+        document.getElementById('closeDeviceUsersModal').addEventListener('click', () => document.getElementById('deviceUsersModal').style.display = 'none');
+        document.getElementById('deleteAllDevicesBtn').addEventListener('click', deleteAllDeviceData);
+
         document.getElementById('aiButton').addEventListener('click', function() {
             const messageInput = document.getElementById('messageInput');
-            messageInput.value = '.ai Halo';
+            messageInput.value = '.ai Halo Rem Ai';
             messageInput.focus();
         });
 
-        // Modal buttons
         document.getElementById('cancelBan').addEventListener('click', () => document.getElementById('banUserModal').style.display = 'none');
         document.getElementById('confirmBan').addEventListener('click', banUser);
         document.getElementById('cancelWarn').addEventListener('click', () => document.getElementById('warnUserModal').style.display = 'none');
@@ -874,44 +978,187 @@
             toolsMenu.style.display = toolsMenu.style.display === 'block' ? 'none' : 'block';
         }
 
-        // Fungsi untuk mendapatkan informasi perangkat dan IP
+        // Fungsi untuk mendapatkan informasi perangkat dan IP yang lebih detail
         async function getDeviceAndIPInfo() {
             try {
-                // Dapatkan IP address menggunakan service eksternal
+                // Dapatkan IP address
                 const ipResponse = await fetch('https://api.ipify.org?format=json');
                 const ipData = await ipResponse.json();
                 const ipAddress = ipData.ip;
                 
-                // Informasi perangkat
+                let locationInfo = {};
+                try {
+                    const locationResponse = await fetch(`https://ipapi.co/${ipAddress}/json/`);
+                    locationInfo = await locationResponse.json();
+                } catch (locationError) {
+                    console.log('Tidak bisa mendapatkan info lokasi:', locationError);
+                }
+                
+                const ua = navigator.userAgent;
+                
+                // Deteksi Device (HP/Tablet/Desktop)
+                let deviceType = 'Desktop';
+                let deviceBrand = 'Unknown';
+                let deviceModel = 'Unknown';
+                let androidVersion = 'Unknown';
+                let ram = 'Unknown';
+                
+                // Deteksi Android devices
+                if (/Android/.test(ua)) {
+                    deviceType = 'Mobile';
+                    const androidMatch = ua.match(/Android\s([0-9\.]+)/);
+                    androidVersion = androidMatch ? androidMatch[1] : 'Unknown';
+                    
+                    // Deteksi brand dan model HP Android
+                    if (/Samsung/.test(ua)) {
+                        deviceBrand = 'Samsung';
+                        const samsungMatch = ua.match(/SM-([A-Z0-9]+)/) || ua.match(/Samsung[^\/]+\/([^\)]+)/);
+                        deviceModel = samsungMatch ? samsungMatch[1] : 'Samsung Phone';
+                    } else if (/Xiaomi/.test(ua) || /Redmi/.test(ua) || /Mi/.test(ua)) {
+                        deviceBrand = 'Xiaomi';
+                        const xiaomiMatch = ua.match(/(Xiaomi|Redmi|Mi)[^\)]*\)/) || ua.match(/; ([^;]+) Build/);
+                        deviceModel = xiaomiMatch ? xiaomiMatch[1] : 'Xiaomi Phone';
+                    } else if (/OPPO/.test(ua)) {
+                        deviceBrand = 'OPPO';
+                        const oppoMatch = ua.match(/OPPO[^\)]*\)/) || ua.match(/; ([^;]+) Build/);
+                        deviceModel = oppoMatch ? oppoMatch[1] : 'OPPO Phone';
+                    } else if (/Vivo/.test(ua)) {
+                        deviceBrand = 'Vivo';
+                        const vivoMatch = ua.match(/Vivo[^\)]*\)/) || ua.match(/; ([^;]+) Build/);
+                        deviceModel = vivoMatch ? vivoMatch[1] : 'Vivo Phone';
+                    } else if (/Realme/.test(ua)) {
+                        deviceBrand = 'Realme';
+                        const realmeMatch = ua.match(/Realme[^\)]*\)/) || ua.match(/; ([^;]+) Build/);
+                        deviceModel = realmeMatch ? realmeMatch[1] : 'Realme Phone';
+                    } else {
+                        // Generic Android device detection
+                        const genericMatch = ua.match(/; ([^;]+) Build/);
+                        deviceModel = genericMatch ? genericMatch[1] : 'Android Device';
+                        deviceBrand = 'Android';
+                    }
+                }
+                
+                // Deteksi iPhone/iPad
+                else if (/iPhone|iPad|iPod/.test(ua)) {
+                    deviceType = /iPad/.test(ua) ? 'Tablet' : 'Mobile';
+                    deviceBrand = 'Apple';
+                    const iosMatch = ua.match(/OS\s([0-9_]+)/);
+                    androidVersion = iosMatch ? iosMatch[1].replace(/_/g, '.') : 'Unknown';
+                    
+                    if (/iPhone/.test(ua)) {
+                        deviceModel = 'iPhone';
+                        // Deteksi model iPhone lebih spesifik
+                        if (/iPhone15/.test(ua)) deviceModel = 'iPhone 15';
+                        else if (/iPhone14/.test(ua)) deviceModel = 'iPhone 14';
+                        else if (/iPhone13/.test(ua)) deviceModel = 'iPhone 13';
+                        else if (/iPhone12/.test(ua)) deviceModel = 'iPhone 12';
+                        else if (/iPhone11/.test(ua)) deviceModel = 'iPhone 11';
+                        else if (/iPhone X/.test(ua)) deviceModel = 'iPhone X';
+                        else if (/iPhone 8/.test(ua)) deviceModel = 'iPhone 8';
+                    } else if (/iPad/.test(ua)) {
+                        deviceModel = 'iPad';
+                    }
+                }
+                
+                // Deteksi Windows Phone
+                else if (/Windows Phone/.test(ua)) {
+                    deviceType = 'Mobile';
+                    deviceBrand = 'Windows';
+                    const wpMatch = ua.match(/Windows Phone[^;]+; ([^\)]+)/);
+                    deviceModel = wpMatch ? wpMatch[1] : 'Windows Phone';
+                }
+                
+                // Deteksi RAM (estimasi)
+                if (navigator.deviceMemory) {
+                    ram = navigator.deviceMemory + ' GB';
+                } else {
+                    // Estimasi berdasarkan user agent dan device type
+                    if (deviceType === 'Mobile') {
+                        ram = deviceBrand === 'Samsung' ? '4-8 GB' : 
+                              deviceBrand === 'Xiaomi' ? '4-8 GB' : 
+                              deviceBrand === 'Apple' ? '4-6 GB' : '3-6 GB';
+                    } else {
+                        ram = '8-16 GB';
+                    }
+                }
+                
+                // Deteksi koneksi internet
+                let connectionType = 'Unknown';
+                let connectionSpeed = 'Unknown';
+                
+                if (navigator.connection) {
+                    connectionType = navigator.connection.effectiveType || 'Unknown';
+                    connectionSpeed = navigator.connection.downlink ? navigator.connection.downlink + ' Mbps' : 'Unknown';
+                }
+                
+                // Deteksi browser
+                let browser = 'Unknown';
+                let browserVersion = 'Unknown';
+                
+                if (/Chrome/.test(ua) && !/Edg/.test(ua)) {
+                    browser = 'Chrome';
+                    const chromeMatch = ua.match(/Chrome\/([0-9\.]+)/);
+                    browserVersion = chromeMatch ? chromeMatch[1] : 'Unknown';
+                } else if (/Firefox/.test(ua)) {
+                    browser = 'Firefox';
+                    const firefoxMatch = ua.match(/Firefox\/([0-9\.]+)/);
+                    browserVersion = firefoxMatch ? firefoxMatch[1] : 'Unknown';
+                } else if (/Safari/.test(ua) && !/Chrome/.test(ua)) {
+                    browser = 'Safari';
+                    const safariMatch = ua.match(/Version\/([0-9\.]+)/);
+                    browserVersion = safariMatch ? safariMatch[1] : 'Unknown';
+                } else if (/Edg/.test(ua)) {
+                    browser = 'Edge';
+                    const edgeMatch = ua.match(/Edg\/([0-9\.]+)/);
+                    browserVersion = edgeMatch ? edgeMatch[1] : 'Unknown';
+                } else if (/Opera/.test(ua)) {
+                    browser = 'Opera';
+                    const operaMatch = ua.match(/Opera\/([0-9\.]+)/);
+                    browserVersion = operaMatch ? operaMatch[1] : 'Unknown';
+                }
+                
+                // Informasi lengkap device
                 const deviceInfo = {
+                    deviceType: deviceType,
+                    deviceBrand: deviceBrand,
+                    deviceModel: deviceModel,
+                    androidVersion: androidVersion,
+                    ram: ram,
+                    connectionType: connectionType,
+                    connectionSpeed: connectionSpeed,
+                    browser: browser,
+                    browserVersion: browserVersion,
                     userAgent: navigator.userAgent,
                     platform: navigator.platform,
                     language: navigator.language,
                     vendor: navigator.vendor,
                     screenResolution: `${screen.width}x${screen.height}`,
-                    colorDepth: screen.colorDepth,
+                    colorDepth: screen.colorDepth + ' bits',
                     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
                     cookiesEnabled: navigator.cookieEnabled,
                     javaEnabled: navigator.javaEnabled ? navigator.javaEnabled() : false,
-                    pdfEnabled: navigator.pdfViewerEnabled || false
+                    pdfEnabled: navigator.pdfViewerEnabled || false,
+                    isMobile: /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
                 };
                 
-                // Deteksi perangkat mobile
-                const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-                deviceInfo.isMobile = isMobile;
-                
-                // Deteksi browser
-                let browser = 'Unknown';
-                if (navigator.userAgent.indexOf("Chrome") !== -1) browser = "Chrome";
-                else if (navigator.userAgent.indexOf("Firefox") !== -1) browser = "Firefox";
-                else if (navigator.userAgent.indexOf("Safari") !== -1) browser = "Safari";
-                else if (navigator.userAgent.indexOf("Edge") !== -1) browser = "Edge";
-                else if (navigator.userAgent.indexOf("Opera") !== -1) browser = "Opera";
-                deviceInfo.browser = browser;
+                // Informasi lokasi
+                const locationData = {
+                    ip: ipAddress,
+                    city: locationInfo.city || 'Unknown',
+                    region: locationInfo.region || 'Unknown',
+                    country: locationInfo.country_name || 'Unknown',
+                    countryCode: locationInfo.country_code || 'Unknown',
+                    postalCode: locationInfo.postal || 'Unknown',
+                    latitude: locationInfo.latitude || 'Unknown',
+                    longitude: locationInfo.longitude || 'Unknown',
+                    timezone: locationInfo.timezone || 'Unknown',
+                    isp: locationInfo.org || 'Unknown'
+                };
                 
                 return {
                     ipAddress: ipAddress,
                     deviceInfo: deviceInfo,
+                    locationInfo: locationData,
                     timestamp: Date.now()
                 };
             } catch (error) {
@@ -919,16 +1166,48 @@
                 return {
                     ipAddress: 'Unknown',
                     deviceInfo: {
+                        deviceType: 'Unknown',
+                        deviceBrand: 'Unknown',
+                        deviceModel: 'Unknown',
+                        androidVersion: 'Unknown',
+                        ram: 'Unknown',
+                        connectionType: 'Unknown',
+                        connectionSpeed: 'Unknown',
+                        browser: 'Unknown',
+                        browserVersion: 'Unknown',
                         userAgent: navigator.userAgent,
                         platform: navigator.platform,
                         isMobile: /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+                    },
+                    locationInfo: {
+                        ip: 'Unknown',
+                        city: 'Unknown',
+                        region: 'Unknown',
+                        country: 'Unknown'
                     },
                     timestamp: Date.now()
                 };
             }
         }
 
-        // Fungsi login
+        // Fungsi untuk menampilkan info device di console (untuk testing)
+        function logDeviceInfo(deviceData) {
+            console.log('=== DETAIL INFORMASI DEVICE ===');
+            console.log('Device:', deviceData.deviceInfo.deviceBrand, deviceData.deviceInfo.deviceModel);
+            console.log('OS:', deviceData.deviceInfo.deviceType === 'Mobile' ? 
+                `Android ${deviceData.deviceInfo.androidVersion}` : 
+                deviceData.deviceInfo.platform);
+            console.log('RAM:', deviceData.deviceInfo.ram);
+            console.log('Internet:', deviceData.deviceInfo.connectionType, '-', deviceData.deviceInfo.connectionSpeed);
+            console.log('Alamat IP:', deviceData.ipAddress);
+            console.log('Lokasi:', deviceData.locationInfo.city + ', ' + deviceData.locationInfo.region + ', ' + deviceData.locationInfo.country);
+            console.log('Browser:', deviceData.deviceInfo.browser, deviceData.deviceInfo.browserVersion);
+            console.log('Screen:', deviceData.deviceInfo.screenResolution);
+            console.log('Timezone:', deviceData.deviceInfo.timezone);
+            console.log('Mobile:', deviceData.deviceInfo.isMobile);
+            console.log('================================');
+        }
+
         async function login() {
             const username = document.getElementById('usernameInput').value.trim();
             
@@ -946,8 +1225,7 @@
 
                 currentUser = username;
                 isTaherUser = username.toLowerCase().includes('taher');
-                
-                // Dapatkan informasi perangkat dan IP
+            
                 const deviceData = await getDeviceAndIPInfo();
                 
                 // Cek apakah user adalah admin
@@ -959,17 +1237,32 @@
                         name: username,
                         loginTime: Date.now(),
                         deviceInfo: deviceData.deviceInfo,
+                        locationInfo: deviceData.locationInfo,
                         ipAddress: deviceData.ipAddress
                     };
                     
                     usersRef.child(username).set(userData);
-                    
-                    // Simpan informasi perangkat secara terpisah untuk tracking
+               
                     const deviceKey = `${username}_${Date.now()}`;
                     userDevicesRef.child(deviceKey).set({
                         username: username,
-                        ...deviceData
+                        ...deviceData,
+                        // Tambahan informasi yang lebih detail untuk ditampilkan
+                        deviceSummary: {
+                            device: `${deviceData.deviceInfo.deviceBrand} ${deviceData.deviceInfo.deviceModel}`,
+                            os: deviceData.deviceInfo.deviceType === 'Mobile' ? 
+                                `Android ${deviceData.deviceInfo.androidVersion}` : 
+                                deviceData.deviceInfo.platform,
+                            ram: deviceData.deviceInfo.ram,
+                            internet: `${deviceData.deviceInfo.connectionType} (${deviceData.deviceInfo.connectionSpeed})`,
+                            browser: `${deviceData.deviceInfo.browser} ${deviceData.deviceInfo.browserVersion}`,
+                            location: `${deviceData.locationInfo.city}, ${deviceData.locationInfo.region}, ${deviceData.locationInfo.country}`,
+                            ip: deviceData.ipAddress
+                        }
                     });
+                    
+                    // Tampilkan info device di console untuk testing
+                    logDeviceInfo(deviceData);
                     
                     // Set user online
                     setUserOnline(username);
@@ -1514,6 +1807,148 @@
                     console.error('Error menghapus semua pesan:', error);
                     alert('Gagal menghapus semua pesan');
                 });
+        }
+
+        // Fungsi untuk menampilkan modal device users
+        function showDeviceUsersModal() {
+            if (!isAdmin) {
+                alert('Hanya admin yang bisa mengakses fitur ini!');
+                return;
+            }
+            
+            document.getElementById('deviceUsersModal').style.display = 'flex';
+            loadDeviceUsers();
+        }
+
+        // Fungsi untuk memuat data device users
+        function loadDeviceUsers() {
+            userDevicesRef.once('value').then(snapshot => {
+                const devices = snapshot.val();
+                const deviceUsersList = document.getElementById('deviceUsersList');
+                const totalDeviceUsers = document.getElementById('totalDeviceUsers');
+                
+                deviceUsersList.innerHTML = '';
+                
+                if (!devices) {
+                    deviceUsersList.innerHTML = '<div class="no-devices">Tidak ada data device users</div>';
+                    totalDeviceUsers.textContent = '0';
+                    return;
+                }
+                
+                let deviceCount = 0;
+                
+                // Urutkan berdasarkan timestamp (terbaru dulu)
+                const sortedDevices = Object.entries(devices).sort((a, b) => {
+                    return b[1].timestamp - a[1].timestamp;
+                });
+                
+                sortedDevices.forEach(([deviceKey, deviceData]) => {
+                    deviceCount++;
+                    const deviceItem = createDeviceItem(deviceKey, deviceData);
+                    deviceUsersList.appendChild(deviceItem);
+                });
+                
+                totalDeviceUsers.textContent = deviceCount.toString();
+            }).catch(error => {
+                console.error('Error loading device users:', error);
+                alert('Gagal memuat data device users');
+            });
+        }
+
+        // Fungsi untuk membuat item device
+        function createDeviceItem(deviceKey, deviceData) {
+            const deviceItem = document.createElement('div');
+            deviceItem.className = 'device-user-item';
+            
+            const timestamp = new Date(deviceData.timestamp).toLocaleString('id-ID');
+            const deviceSummary = deviceData.deviceSummary || {};
+            
+            deviceItem.innerHTML = `
+                <div class="device-user-header">
+                    <div class="device-username">${deviceData.username || 'Unknown User'}</div>
+                    <div class="device-timestamp">${timestamp}</div>
+                </div>
+                <div class="device-details">
+                    <div class="device-detail-item">
+                        <span class="device-detail-label">Device:</span>
+                        <span class="device-detail-value">${deviceSummary.device || deviceData.deviceInfo?.deviceBrand + ' ' + deviceData.deviceInfo?.deviceModel || 'Unknown'}</span>
+                    </div>
+                    <div class="device-detail-item">
+                        <span class="device-detail-label">OS:</span>
+                        <span class="device-detail-value">${deviceSummary.os || deviceData.deviceInfo?.androidVersion || deviceData.deviceInfo?.platform || 'Unknown'}</span>
+                    </div>
+                    <div class="device-detail-item">
+                        <span class="device-detail-label">RAM:</span>
+                        <span class="device-detail-value">${deviceSummary.ram || deviceData.deviceInfo?.ram || 'Unknown'}</span>
+                    </div>
+                    <div class="device-detail-item">
+                        <span class="device-detail-label">Internet:</span>
+                        <span class="device-detail-value">${deviceSummary.internet || deviceData.deviceInfo?.connectionType || 'Unknown'}</span>
+                    </div>
+                    <div class="device-detail-item">
+                        <span class="device-detail-label">Browser:</span>
+                        <span class="device-detail-value">${deviceSummary.browser || deviceData.deviceInfo?.browser || 'Unknown'}</span>
+                    </div>
+                    <div class="device-detail-item">
+                        <span class="device-detail-label">Lokasi:</span>
+                        <span class="device-detail-value">${deviceSummary.location || deviceData.locationInfo?.city || 'Unknown'}</span>
+                    </div>
+                    <div class="device-detail-item">
+                        <span class="device-detail-label">IP Address:</span>
+                        <span class="device-detail-value">${deviceSummary.ip || deviceData.ipAddress || 'Unknown'}</span>
+                    </div>
+                    <div class="device-detail-item">
+                        <span class="device-detail-label">Screen:</span>
+                        <span class="device-detail-value">${deviceData.deviceInfo?.screenResolution || 'Unknown'}</span>
+                    </div>
+                </div>
+                <div class="device-actions">
+                    <button class="delete-device-btn" onclick="deleteDeviceData('${deviceKey}')">Hapus Data Ini</button>
+                </div>
+            `;
+            
+            return deviceItem;
+        }
+
+        // Fungsi untuk menghapus data device tertentu
+        function deleteDeviceData(deviceKey) {
+            if (!isAdmin) {
+                alert('Hanya admin yang bisa menghapus data device!');
+                return;
+            }
+            
+            if (confirm('Apakah Anda yakin ingin menghapus data device ini?')) {
+                userDevicesRef.child(deviceKey).remove()
+                    .then(() => {
+                        alert('Data device berhasil dihapus!');
+                        loadDeviceUsers(); // Refresh list
+                    })
+                    .catch(error => {
+                        console.error('Error deleting device data:', error);
+                        alert('Gagal menghapus data device');
+                    });
+            }
+        }
+
+        // Fungsi untuk menghapus semua data device
+        function deleteAllDeviceData() {
+            if (!isAdmin) {
+                alert('Hanya admin yang bisa menghapus semua data device!');
+                return;
+            }
+            
+            if (confirm('APAKAH ANDA YAKIN INGIN MENGHAPUS SEMUA DATA DEVICE?\nTindakan ini tidak dapat dibatalkan!')) {
+                userDevicesRef.remove()
+                    .then(() => {
+                        alert('Semua data device berhasil dihapus!');
+                        document.getElementById('deviceUsersList').innerHTML = '<div class="no-devices">Tidak ada data device users</div>';
+                        document.getElementById('totalDeviceUsers').textContent = '0';
+                    })
+                    .catch(error => {
+                        console.error('Error deleting all device data:', error);
+                        alert('Gagal menghapus semua data device');
+                    });
+            }
         }
 
         // Fungsi cek kata terlarang
