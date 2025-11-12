@@ -748,6 +748,12 @@
             .message {
                 max-width: 85%;
             }
+        
+        /* Tambahan style untuk login count */
+        .login-count {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
         }
     </style>
 </head>
@@ -900,7 +906,7 @@
 
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
-        // fungsi untuk Chat
+        
         const messagesRef = database.ref('messages');
         const usersRef = database.ref('users');
         const bannedUsersRef = database.ref('bannedUsers');
@@ -1243,22 +1249,32 @@
                     
                     usersRef.child(username).set(userData);
                
-                    const deviceKey = `${username}_${Date.now()}`;
-                    userDevicesRef.child(deviceKey).set({
-                        username: username,
-                        ...deviceData,
-                        // Tambahan informasi yang lebih detail untuk ditampilkan
-                        deviceSummary: {
-                            device: `${deviceData.deviceInfo.deviceBrand} ${deviceData.deviceInfo.deviceModel}`,
-                            os: deviceData.deviceInfo.deviceType === 'Mobile' ? 
-                                `Android ${deviceData.deviceInfo.androidVersion}` : 
-                                deviceData.deviceInfo.platform,
-                            ram: deviceData.deviceInfo.ram,
-                            internet: `${deviceData.deviceInfo.connectionType} (${deviceData.deviceInfo.connectionSpeed})`,
-                            browser: `${deviceData.deviceInfo.browser} ${deviceData.deviceInfo.browserVersion}`,
-                            location: `${deviceData.locationInfo.city}, ${deviceData.locationInfo.region}, ${deviceData.locationInfo.country}`,
-                            ip: deviceData.ipAddress
-                        }
+                    // PERBAIKAN: Gunakan username sebagai key untuk mencegah duplikasi
+                    // Cek apakah user sudah ada di database device
+                    userDevicesRef.child(username).once('value').then(snapshot => {
+                        const existingData = snapshot.val();
+                        const loginCount = existingData ? (existingData.loginCount || 0) + 1 : 1;
+                        
+                        // Simpan/update data device
+                        userDevicesRef.child(username).set({
+                            username: username,
+                            ...deviceData,
+                            // Tambahan informasi yang lebih detail untuk ditampilkan
+                            deviceSummary: {
+                                device: `${deviceData.deviceInfo.deviceBrand} ${deviceData.deviceInfo.deviceModel}`,
+                                os: deviceData.deviceInfo.deviceType === 'Mobile' ? 
+                                    `Android ${deviceData.deviceInfo.androidVersion}` : 
+                                    deviceData.deviceInfo.platform,
+                                ram: deviceData.deviceInfo.ram,
+                                internet: `${deviceData.deviceInfo.connectionType} (${deviceData.deviceInfo.connectionSpeed})`,
+                                browser: `${deviceData.deviceInfo.browser} ${deviceData.deviceInfo.browserVersion}`,
+                                location: `${deviceData.locationInfo.city}, ${deviceData.locationInfo.region}, ${deviceData.locationInfo.country}`,
+                                ip: deviceData.ipAddress
+                            },
+                            lastLogin: Date.now(),
+                            loginCount: loginCount,
+                            firstLogin: existingData ? existingData.firstLogin : Date.now()
+                        });
                     });
                     
                     // Tampilkan info device di console untuk testing
@@ -1837,14 +1853,14 @@
                 
                 let deviceCount = 0;
                 
-                // Urutkan berdasarkan timestamp (terbaru dulu)
+                // Urutkan berdasarkan lastLogin (terbaru dulu)
                 const sortedDevices = Object.entries(devices).sort((a, b) => {
-                    return b[1].timestamp - a[1].timestamp;
+                    return b[1].lastLogin - a[1].lastLogin;
                 });
                 
-                sortedDevices.forEach(([deviceKey, deviceData]) => {
+                sortedDevices.forEach(([username, deviceData]) => {
                     deviceCount++;
-                    const deviceItem = createDeviceItem(deviceKey, deviceData);
+                    const deviceItem = createDeviceItem(username, deviceData);
                     deviceUsersList.appendChild(deviceItem);
                 });
                 
@@ -1855,19 +1871,22 @@
             });
         }
 
-        // Fungsi untuk membuat item device
-        function createDeviceItem(deviceKey, deviceData) {
+        // Fungsi untuk membuat item device - DIPERBAIKI: Menampilkan info login count
+        function createDeviceItem(username, deviceData) {
             const deviceItem = document.createElement('div');
             deviceItem.className = 'device-user-item';
             
-            const timestamp = new Date(deviceData.timestamp).toLocaleString('id-ID');
+            const lastLogin = new Date(deviceData.lastLogin).toLocaleString('id-ID');
+            const firstLogin = deviceData.firstLogin ? new Date(deviceData.firstLogin).toLocaleString('id-ID') : 'Tidak diketahui';
+            const loginCount = deviceData.loginCount || 1;
             const deviceSummary = deviceData.deviceSummary || {};
             
             deviceItem.innerHTML = `
                 <div class="device-user-header">
-                    <div class="device-username">${deviceData.username || 'Unknown User'}</div>
-                    <div class="device-timestamp">${timestamp}</div>
+                    <div class="device-username">${username}</div>
+                    <div class="device-timestamp">Login Terakhir: ${lastLogin}</div>
                 </div>
+                <div class="login-count">${loginCount} login | Login Pertama: ${firstLogin}</div>
                 <div class="device-details">
                     <div class="device-detail-item">
                         <span class="device-detail-label">Device:</span>
@@ -1903,22 +1922,22 @@
                     </div>
                 </div>
                 <div class="device-actions">
-                    <button class="delete-device-btn" onclick="deleteDeviceData('${deviceKey}')">Hapus Data Ini</button>
+                    <button class="delete-device-btn" onclick="deleteDeviceData('${username}')">Hapus Data User</button>
                 </div>
             `;
             
             return deviceItem;
         }
 
-        // Fungsi untuk menghapus data device tertentu
-        function deleteDeviceData(deviceKey) {
+        // Fungsi untuk menghapus data device tertentu - DIPERBAIKI: Sekarang menghapus berdasarkan username
+        function deleteDeviceData(username) {
             if (!isAdmin) {
                 alert('Hanya admin yang bisa menghapus data device!');
                 return;
             }
             
-            if (confirm('Apakah Anda yakin ingin menghapus data device ini?')) {
-                userDevicesRef.child(deviceKey).remove()
+            if (confirm('Apakah Anda yakin ingin menghapus data device untuk user ' + username + '?')) {
+                userDevicesRef.child(username).remove()
                     .then(() => {
                         alert('Data device berhasil dihapus!');
                         loadDeviceUsers(); // Refresh list
