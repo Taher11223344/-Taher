@@ -34,26 +34,27 @@
             transition: all 0.3s ease;
         }
 
-        /* Login Scene */
+       /* Login Scene */
         #loginScene {
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            padding: 40px 30px;
             height: 100%;
-            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-            color: white;
-            text-align: center;
+            padding: 40px 30px;
+            background: url('https://l.top4top.io/p_3603h4vvi0.png') no-repeat center center fixed;
+            background-size: cover;
         }
 
         #loginScene h1 {
-            margin-bottom: 30px;
-            font-size: 28px;
-            font-weight: 700;
-            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        }
-
+    margin-bottom: 30px;
+    font-size: 25px;
+    font-weight: 700;
+    text-shadow: 
+        0 0 5px #fff,
+        0 0 10px #fff,
+        0 0 20px #fff;
+}
         #loginScene input {
             width: 100%;
             padding: 15px;
@@ -124,7 +125,7 @@
         .chat-header {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
-            padding: 15px 20px;
+            padding: 14px 18px;
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -225,7 +226,7 @@
 
         .chat-messages {
             flex: 1;
-            padding: 20px;
+            padding: 18px;
             overflow-y: auto;
             background: url('https://b.top4top.io/p_36027h9sg0.jpg') no-repeat center center fixed;
             background-size: cover;
@@ -239,8 +240,8 @@
         }
 
         .message {
-            margin-bottom: 15px;
-            padding: 12px 16px;
+            margin-bottom: 14px;
+            padding: 11px 14px;
             border-radius: 18px;
             max-width: 80%;
             position: relative;
@@ -284,8 +285,8 @@
 
         .message .sender {
             font-weight: bold;
-            font-size: 14px;
-            margin-bottom: 5px;
+            font-size: 15px;
+            margin-bottom: 4px;
             opacity: 0.9;
             display: flex;
             align-items: center;
@@ -293,11 +294,11 @@
 
         .message .text {
             word-wrap: break-word;
-            line-height: 1.4;
+            line-height: 1;
         }
 
         .message .time {
-            font-size: 11px;
+            font-size: 10px;
             opacity: 0.7;
             text-align: right;
             margin-top: 5px;
@@ -761,13 +762,12 @@
     <div class="container">
         <!-- Login Scene -->
         <div id="loginScene">
-            <h1>Grup Chat Online</h1>
+            <h1>⚡WELCOME TO GROUP🔥</h1>
             <input type="text" id="usernameInput" placeholder="Masukkan nama Anda">
             <button id="loginButton">Masuk ke Grup</button>
             <button id="quickLoginButton" style="display: none;">Login sebagai <span id="lastUsername"></span></button>
             <div id="bannedMessage">
-                <p>🚫Akun Anda Telah Di Banned</p>
-                <p> Karna Spam </p>
+                <p>🚫Akun Anda Telah Di Banned❌</p>
             </div>
         </div>
 
@@ -791,13 +791,13 @@
             </div>
 
             <div class="tools-menu" id="toolsMenu">
-                <button id="deleteAllMessagesBtn">Hapus Semua Pesan</button>
-                <button id="enableDeletionModeBtn">Hapus Pesan Orang Lain</button>
-                <button id="banUserBtn">Ban User</button>
-                <button id="warnUserBtn">Kirim Peringatan</button>
-                <button id="makeAdminBtn">Jadikan Admin</button>
-                <button id="removeAdminBtn">Hentikan Admin</button>
-                <button id="toggleGroupBtn">Tutup Grup</button>
+                <button id="deleteAllMessagesBtn">Delete All</button>
+                <button id="enableDeletionModeBtn">Delete User Chat</button>
+                <button id="banUserBtn">Banned User</button>
+                <button id="warnUserBtn">Send Warning</button>
+                <button id="makeAdminBtn">Add Admin</button>
+                <button id="removeAdminBtn">Stop Admin</button>
+                <button id="toggleGroupBtn">Close Group</button>
                 <button id="checkDevicesBtn">Cek Device Users</button>
             </div>
 
@@ -819,7 +819,7 @@
             <h2>Banned User</h2>
             <input type="text" id="userToBan" placeholder="Nama user yang akan dibanned">
             <input type="text" id="banReason" placeholder="Alasan banned">
-            <input type="number" id="banDuration" placeholder="Durasi banned (menit)" value="60">
+            <input type="number" id="banDuration" placeholder="Durasi banned Permenit" value="60">
             <div class="modal-buttons">
                 <button class="cancel" id="cancelBan">Batal</button>
                 <button class="confirm" id="confirmBan">Banned</button>
@@ -829,23 +829,23 @@
 
     <div class="modal" id="warnUserModal">
         <div class="modal-content">
-            <h2>Berikan Peringatan</h2>
-            <input type="text" id="userToWarn" placeholder="Nama user yang akan diperingatkan">
+            <h2>Kirim Peringatan</h2>
+            <input type="text" id="userToWarn" placeholder="Nama user">
             <textarea id="warningMessage" placeholder="Pesan peringatan"></textarea>
             <div class="modal-buttons">
                 <button class="cancel" id="cancelWarn">Batal</button>
-                <button class="confirm" id="confirmWarn">Kirim Peringatan</button>
+                <button class="confirm" id="confirmWarn">Kirim</button>
             </div>
         </div>
     </div>
 
     <div class="modal" id="makeAdminModal">
         <div class="modal-content">
-            <h2>Jadikan Admin</h2>
+            <h2>Tambah Admin</h2>
             <input type="text" id="userToAdmin" placeholder="Masukan Username">
             <div class="modal-buttons">
                 <button class="cancel" id="cancelAdmin">Batal</button>
-                <button class="confirm" id="confirmAdmin">Jadikan Admin</button>
+                <button class="confirm" id="confirmAdmin">Add</button>
             </div>
         </div>
     </div>
@@ -867,7 +867,7 @@
             <p>Apakah Anda yakin ingin menghapus semua pesan? Tindakan ini tidak dapat dibatalkan.</p>
             <div class="modal-buttons">
                 <button class="cancel" id="cancelDeleteAll">Batal</button>
-                <button class="confirm" id="confirmDeleteAll">Hapus Semua</button>
+                <button class="confirm" id="confirmDeleteAll">Hapus</button>
             </div>
         </div>
     </div>
@@ -917,7 +917,7 @@
 
         const AI_API_KEY = "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";
         const AI_API_URL = "https://openrouter.ai/api/v1/chat/completions";
-        const AI_NAME = "Rem Ai";
+        const AI_NAME = "⚙️ SYSTEM AI";
 
         let currentUser = null;
         let isTaherUser = false;
@@ -929,7 +929,7 @@
         let deletionModeActive = false;
 
         const forbiddenWords = ['Tuti', 'Udin', 'Haer', 'Tut', 'Adam'];
-        const forbiddenEmojis = ['✅', '✓', '✔️', '☑️'];
+        const forbiddenEmojis = ['✅', '✓', '✔️', '☑️','🤭','😹',];
 
         // Event Listeners
         document.getElementById('loginButton').addEventListener('click', login);
@@ -1383,7 +1383,7 @@
                 // Tampilkan status sedang memproses
                 const thinkingMessage = {
                     text: `${AI_NAME} sedang mengetik...`,
-                    sender: 'System',
+                    sender: ' ',
                     timestamp: Date.now(),
                     id: generateMessageId(),
                     type: 'text'
@@ -1493,7 +1493,7 @@
             
             // Cek emoji terlarang untuk user biasa
             if (!isAdmin && containsForbiddenEmojis(messageText)) {
-                alert('Anda tidak diizinkan menggunakan emoji centang!');
+                alert('Gabisa ya wkwk🤭😹');
                 return;
             }
             
@@ -1734,7 +1734,7 @@
                         // Hapus langsung dari database
                         messagesRef.child(key).remove()
                             .then(() => {
-                                console.log('Pesan berhasil dihapus dari database');
+                                console.log('Pesan berhasil dihapus');
                             })
                             .catch(error => {
                                 console.error('Error menghapus pesan:', error);
@@ -1804,8 +1804,8 @@
                     
                     // Kirim pesan sistem
                     const systemMessage = {
-                        text: `Semua pesan telah dihapus oleh ${currentUser}.`,
-                        sender: 'System',
+                        text: ` ${currentUser}!, Ngapain Hapus semua Pesannya Jadinya aku gabut nih😡`,
+                        sender: '⚙️SYSTEM AI',
                         timestamp: Date.now(),
                         id: generateMessageId(),
                         type: 'text'
@@ -2115,8 +2115,8 @@
             
             // Kirim pesan sistem
             const systemMessage = {
-                text: `User ${username} sekarang menjadi admin.`,
-                sender: 'System',
+                text: `${username}, Wih Admin Baru nih😆`,
+                sender: '⚙️SYSTEM AI',
                 timestamp: Date.now(),
                 id: generateMessageId(),
                 type: 'text'
@@ -2144,7 +2144,7 @@
             
             // Cek apakah mencoba menghapus admin Taher
             if (username.toLowerCase().includes('taher')) {
-                alert('Tidak Bisa Hentikan Admin Taher Karena Dia Pembuat nya');
+                alert('Woi Kontol, Ngapain?😹');
                 return;
             }
             
@@ -2153,7 +2153,7 @@
             
             // Kirim pesan sistem
             const systemMessage = {
-                text: `User ${username} tidak lagi menjadi admin.`,
+                text: `Yahh..😔 ${username} Bukan Admin lagi.`,
                 sender: 'System',
                 timestamp: Date.now(),
                 id: generateMessageId(),
@@ -2173,8 +2173,8 @@
             
             // Kirim pesan sistem
             const systemMessage = {
-                text: `Grup telah ${newStatus ? 'ditutup' : 'dibuka'} oleh ${currentUser}. ${newStatus ? 'GRUP TELAH DI TUTUP❗.' : ''}`,
-                sender: 'System',
+                text: `Kenapa Grupnya ${newStatus ? 'Ditutup' : 'Dibuka'} Lagi ${currentUser}🥴😡. : ''}`,
+                sender: '⚙️SYSTEM AI',
                 timestamp: Date.now(),
                 id: generateMessageId(),
                 type: 'text'
@@ -2183,9 +2183,8 @@
             messagesRef.push(systemMessage);
             
             // Update tombol tools
-            document.getElementById('toggleGroupBtn').textContent = newStatus ? 'Buka Grup' : 'Tutup Grup';
+            document.getElementById('toggleGroupBtn').textContent = newStatus ? 'Open Grup' : 'Close Grup';
             
-            // Sembunyikan menu tools
             document.getElementById('toolsMenu').style.display = 'none';
         }
 
@@ -2202,7 +2201,7 @@
                 
                 if (groupClosed && !isAdmin) {
                     chatInput.classList.add('disabled');
-                    messageInput.placeholder = 'Grup ditutup. Hanya admin yang bisa mengirim pesan.';
+                    messageInput.placeholder = '⛔GRUP SEDANG DI TUTUP⛔.';
                     sendButton.disabled = true;
                     fileUploadButton.disabled = true;
                 } else {
